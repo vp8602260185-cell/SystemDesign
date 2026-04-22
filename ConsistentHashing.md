@@ -147,45 +147,94 @@ If S1 fails → its load spreads **evenly across S2 and S3**
 
 ---
 
-## 5. Code Implementation (Python)
+## 5. Code Implementation (Java)
 
-```python
-import hashlib
-import bisect
+```java
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
 
-class ConsistentHashing:
-    def __init__(self, servers=None, num_replicas=150):
-        self.num_replicas = num_replicas   # virtual nodes per server
-        self.ring = {}                     # hash_position → server
-        self.sorted_keys = []              # sorted list of positions
-        self.servers = set()
-        for server in (servers or []):
-            self.add_server(server)
+class ConsistentHashing {
+    private final int numReplicas; // Number of virtual nodes per server
+    private final TreeMap<Long, String> ring; // Hash ring storing virtual nodes
+    private final Set<String> servers; // Set of physical servers
 
-    def _hash(self, key):
-        """MD5 hash → large integer position on ring"""
-        return int(hashlib.md5(key.encode()).hexdigest(), 16)
+    public ConsistentHashing(List<String> servers, int numReplicas) {
+        this.numReplicas = numReplicas;
+        this.ring = new TreeMap<>();
+        this.servers = new HashSet<>();
 
-    def add_server(self, server):
-        self.servers.add(server)
-        for i in range(self.num_replicas):
-            h = self._hash(f"{server}-{i}")
-            self.ring[h] = server
-            bisect.insort(self.sorted_keys, h)
+        // Add each server to the hash ring
+        for (String server : servers) {
+            addServer(server);
+        }
+    }
 
-    def remove_server(self, server):
-        self.servers.discard(server)
-        for i in range(self.num_replicas):
-            h = self._hash(f"{server}-{i}")
-            del self.ring[h]
-            self.sorted_keys.remove(h)
+    private long hash(String key) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(key.getBytes());
+            byte[] digest = md.digest();
+            return ((long) (digest[0] & 0xFF) << 24) |
+                   ((long) (digest[1] & 0xFF) << 16) |
+                   ((long) (digest[2] & 0xFF) << 8) |
+                   ((long) (digest[3] & 0xFF));
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("MD5 algorithm not found", e);
+        }
+    }
 
-    def get_server(self, key):
-        if not self.ring:
-            return None
-        h = self._hash(key)
-        idx = bisect.bisect(self.sorted_keys, h) % len(self.sorted_keys)
-        return self.ring[self.sorted_keys[idx]]
+    public void addServer(String server) {
+        servers.add(server);
+        for (int i = 0; i < numReplicas; i++) {
+            long hash = hash(server + "-" + i); // Unique hash for each virtual node
+            ring.put(hash, server);
+        }
+    }
+
+    public void removeServer(String server) {
+        if (servers.remove(server)) {
+            for (int i = 0; i < numReplicas; i++) {
+                long hash = hash(server + "-" + i);
+                ring.remove(hash);
+            }
+        }
+    }
+
+    public String getServer(String key) {
+        if (ring.isEmpty()) {
+            return null; // No servers available
+        }
+
+        long hash = hash(key);
+        // Find the closest server in a clockwise direction
+        Map.Entry<Long, String> entry = ring.ceilingEntry(hash);
+        if (entry == null) {
+            // If we exceed the highest node, wrap around to the first node
+            entry = ring.firstEntry();
+        }
+        return entry.getValue();
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        List<String> servers = Arrays.asList("S0", "S1", "S2", "S3", "S4", "S5");
+        ConsistentHashing ch = new ConsistentHashing(servers, 3);
+
+        // Step 2: Assign requests (keys) to servers
+        System.out.println("UserA is assigned to: " + ch.getServer("UserA"));
+        System.out.println("UserB is assigned to: " + ch.getServer("UserB"));
+
+        // Step 3: Add a new server dynamically
+        ch.addServer("S6");
+        System.out.println("UserA is now assigned to: " + ch.getServer("UserA"));
+
+        // Step 4: Remove a server dynamically
+        ch.removeServer("S2");
+        System.out.println("UserB is now assigned to: " + ch.getServer("UserB"));
+    }
+}
 ```
 
 ### Key Points
