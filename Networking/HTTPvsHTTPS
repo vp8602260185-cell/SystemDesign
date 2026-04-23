@@ -1,0 +1,55 @@
+# HTTP & HTTPS in System Design
+
+## 1. HTTP Fundamentals (HyperText Transfer Protocol)
+HTTP is a stateless, text-based application-layer protocol (Layer 7) that serves as the standard for communication between web clients and servers.
+
+- **Client-Server Model**: Communication is initiated by a client (browser, app) sending a request to a server.
+- **TCP-based**: Traditionally sits on top of TCP (Port 80) for reliable, ordered delivery.
+- **Statelessness**: Each request is independent. The server doesn't "remember" previous interactions.
+    - *Workarounds*: Cookies, Session IDs, and JWTs are used to maintain state.
+
+## 2. HTTP Methods and Status Codes
+Understanding method behavior is critical for building reliable distributed systems.
+
+### Common Methods
+| Method | Use Case | Idempotent? |
+| :--- | :--- | :--- |
+| **GET** | Retrieve data | Yes |
+| **POST** | Create new resources | No |
+| **PUT** | Update/Replace resource | Yes |
+| **DELETE** | Remove resource | Yes |
+| **PATCH** | Partial modifications | No |
+
+### Common Status Codes
+- **2xx (Success)**: `200 OK`, `201 Created`
+- **3xx (Redirection)**: `301 Moved Permanently`, `302 Found`
+- **4xx (Client Error)**: `400 Bad Request`, `401 Unauthorized`, `404 Not Found`
+- **5xx (Server Error)**: `500 Internal Server Error`, `503 Service Unavailable`
+
+## 3. Limitations of HTTP
+- **No Encryption**: Data is sent in plain text, visible to anyone on the network path.
+- **No Authentication**: No way to verify the server's identity.
+- **No Integrity**: Data can be modified in transit (Man-in-the-Middle attacks).
+
+## 4. HTTPS (HTTP Secure)
+HTTPS is HTTP layered on top of **SSL/TLS**. It provides three core guarantees:
+1. **Encryption**: Confidentiality via digital "envelopes."
+2. **Integrity**: Ensures data isn't tampered with during transit.
+3. **Authentication**: Verifies server identity using digital certificates issued by Certificate Authorities (CAs).
+
+## 5. The TLS Handshake Process
+The secure connection is established through these steps:
+1. **Client Hello**: Client sends supported TLS versions and cipher suites.
+2. **Server Hello**: Server chooses version/cipher and sends its SSL certificate.
+3. **Certificate Verification**: Client checks the certificate's validity with a trusted CA.
+4. **Key Exchange**: Public-key cryptography is used to exchange a "pre-master secret."
+5. **Encrypted Communication**: Symmetric session keys are derived for fast, encrypted data exchange.
+
+## 6. Evolution of HTTP Protocols
+| Version | Key Features | Main Limitation |
+| :--- | :--- | :--- |
+| **HTTP/1.1** | Persistent connections (Keep-Alive). | Head-of-Line (HoL) blocking (sequential processing). |
+| **HTTP/2** | Binary framing, Multiplexing, Header compression (HPACK), Server Push. | TCP-level HoL blocking (one lost packet stalls all streams). |
+| **HTTP/3** | Runs over **UDP** (using QUIC protocol), 0-RTT connection, Connection Migration. | Still seeing global adoption. |
+
+---
